@@ -17,6 +17,10 @@ class Jewel {
 type Row = Array<Jewel>;
 type Grid = Array<Row>;
 
+function getCellPosition(x: number, y: number) {
+    return new Point(x * JEWEL_W, y * JEWEL_H);
+}
+
 function getShapeForType(type: number) {
     let shape = new createjs.Shape();
     shape.graphics
@@ -46,36 +50,61 @@ function createGrid(W: number, H: number): Grid {
         field[i] = Array<Jewel>(W);
         for (let j = 0; j < W; ++j) {
             field[i][j] = new Jewel(randomInt(0, 2));
-            field[i][j].shape.x = i * JEWEL_W;
-            field[i][j].shape.y = j * JEWEL_H;
+            let position = getCellPosition(i, j)
+            field[i][j].shape.x = position.x;
+            field[i][j].shape.y = position.y;
         }
     }
     return field;
 }
 
+class Point {
+    x: number;
+    y: number;
+
+    constructor(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+    }
+};
+
+function swapJewels(grid: Grid, p1: Point, p2: Point) {
+    let pos1 = getCellPosition(p1.x, p1.y)
+    let pos2 = getCellPosition(p2.x, p2.y)
+    console.log(pos1);
+    console.log(pos2);
+    createjs.Tween.get(grid[p1.x][p1.y].shape).to({ x: pos2.x, y: pos2.y }, 1000);
+    createjs.Tween.get(grid[p2.x][p2.y].shape).to({ x: pos1.x, y: pos1.y }, 1000);
+}
+
 function main() {
-    let stage = new createjs.StageGL('BejeweledStage');
+    let stage = new createjs.Stage('BejeweledStage');
     stage.mouseEnabled = true;
 
     let grid_container = new createjs.Container();
+
+    let current_selection: Point = null;
 
     let grid = createGrid(GRID_H, GRID_W);
     for (let i = 0; i < grid.length; ++i) {
         for (let j = 0; j < grid[i].length; ++j) {
             grid_container.addChild(grid[i][j].shape);
+            grid[i][j].shape.on("click", (event) => {
+                if (current_selection !== null) {
+                    swapJewels(grid, current_selection, new Point(i, j));
+                    // Check for three-in-a-row.
+                    current_selection = null;
+                } else {
+                    current_selection = new Point(i, j);
+                    console.log("Selected: ", current_selection);
+                }
+            });
         }
     }
 
-    grid_container.cache(0, 0, 640, 480);
+    // grid_container.cache(0, 0, 640, 480);
     stage.addChild(grid_container);
     stage.update();
-
-    // createjs.Tween.get(shape, { loop: true })
-    //     .to({ x: 400 }, 1000, createjs.Ease.getPowInOut(4))
-    //     .to({ alpha: 0, y: 175 }, 500, createjs.Ease.getPowInOut(2))
-    //     .to({ alpha: 0, y: 225 }, 100)
-    //     .to({ alpha: 1, y: 200 }, 500, createjs.Ease.getPowInOut(2))
-    //     .to({ x: 100 }, 800, createjs.Ease.getPowInOut(2));
 
     createjs.Ticker.framerate = 60;
     createjs.Ticker.addEventListener("tick", stage);
